@@ -106,7 +106,8 @@ Saving goes through `pkexec` to a small, stdlib-only helper that:
 - labels models `360-<sector>-<n>` (≤ 24 chars, no commas, as Howdy requires).
 
 Flags: `--dry-run` (never saves), `--replace` (replace existing models; asks
-for confirmation in the UI).
+for confirmation in the UI), `--demo` (scripted run with a drawn silhouette; no
+camera, nothing read or saved; also produces the README screenshots).
 
 ### 4.3 `howdy360 measure`
 
@@ -141,6 +142,7 @@ src/howdy360/
   measure.py        measurement command
   enroll_app.py     GTK4/libadwaita UI + capture engine thread
   render.py         circular preview + ring compositing (OpenCV → GdkTexture)
+  demo.py           scripted demo engine and silhouette (no camera)
   privileged_save.py  stdlib-only helper run through pkexec
 ```
 

@@ -109,6 +109,7 @@ PT: dict[str, str] = {
     "Replace all existing models?": "Substituir todos os registos existentes?",
     "Your current models will be backed up first.": "Os registos atuais ficam numa cópia de segurança.",
     "Replace": "Substituir",
+    "Demo mode: simulated run, nothing was saved.": "Modo demonstração: simulação, nada foi gravado.",
     "Howdy's model file was not changed.": "O ficheiro do Howdy não foi alterado.",
     "Error": "Erro",
     "right": "direita",

@@ -226,14 +226,44 @@ def save_candidates(items: list[tuple[str, np.ndarray]]) -> Path:
     return path
 
 
-def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
+def run(
+    paths: HowdyPaths,
+    user: str,
+    dry_run: bool,
+    replace: bool,
+    demo: bool = False,
+    screenshots: Path | None = None,
+) -> int:
     import gi
 
+    if screenshots is not None:
+        # XWayland keeps drawing while the window is covered (Wayland stops sending
+        # frames to occluded windows), so captures are reliable.
+        os.environ.setdefault("GDK_BACKEND", "x11")
     gi.require_version("Gtk", "4.0")
     gi.require_version("Adw", "1")
-    from gi.repository import Adw, Gdk, GLib, Gtk
+    gi.require_version("Graphene", "1.0")
+    from gi.repository import Adw, Gdk, GLib, Graphene, Gtk
 
     from .render import SIZE, compose
+
+    class Capture(Gtk.Widget):
+        """Bin container that can record its child's render node during a real frame."""
+
+        def __init__(self, child) -> None:
+            super().__init__()
+            self.set_layout_manager(Gtk.BinLayout())
+            child.set_parent(self)
+            self.child = child
+            self.request = None
+
+        def do_snapshot(self, snapshot) -> None:
+            if self.request is not None:
+                done, self.request = self.request, None
+                record = Gtk.Snapshot()
+                self.snapshot_child(self.child, record)
+                GLib.idle_add(done, record.to_node(), self.get_width(), self.get_height())
+            self.snapshot_child(self.child, snapshot)
 
     class App(Adw.Application):
         def __init__(self) -> None:
@@ -242,6 +272,7 @@ def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
             self.pending = False
             self.engine: Engine | None = None
             self.exit_code = 0
+            self.shots: set[str] = set()
 
         def do_activate(self) -> None:
             css = Gtk.CssProvider()
@@ -251,7 +282,7 @@ def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
             )
             self.win = Adw.ApplicationWindow(application=self, default_width=640, default_height=840, title="Howdy 360")
             self.win.connect("close-request", self.on_close)
-            view = Adw.ToolbarView()
+            view = Adw.ToolbarView(css_classes=["background"])
             view.add_top_bar(
                 Adw.HeaderBar(title_widget=Adw.WindowTitle(title="Howdy 360", subtitle=_("Guided face enrollment")))
             )
@@ -260,9 +291,15 @@ def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
             self.stack.add_named(self.capture_page(), "capture")
             self.toasts.set_child(self.stack)
             view.set_content(self.toasts)
-            self.win.set_content(view)
+            self.capture = Capture(view)
+            self.win.set_content(self.capture)
             self.win.present()
-            self.engine = Engine(paths, user, self.publish)
+            if demo:
+                from .demo import DemoEngine
+
+                self.engine = DemoEngine(self.publish)
+            else:
+                self.engine = Engine(paths, user, self.publish)
             self.engine.start()
 
         def capture_page(self):
@@ -344,7 +381,12 @@ def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
             self.status = Gtk.Label(css_classes=["dim-label"], wrap=True, justify=Gtk.Justification.CENTER)
             box.append(self.status)
             buttons = Gtk.Box(spacing=12, halign=Gtk.Align.CENTER)
-            if dry_run:
+            if demo:
+                self.status.set_label(_("Demo mode: simulated run, nothing was saved."))
+                close = Gtk.Button(label=_("Close"), css_classes=["pill", "suggested-action"])
+                close.connect("clicked", lambda *_a: self.win.close())
+                buttons.append(close)
+            elif dry_run:
                 path = save_candidates(self.engine.chosen) if self.engine.chosen else None
                 self.status.set_label(_("Dry run: nothing was saved. Candidates: {path}", path=path))
                 close = Gtk.Button(label=_("Close"), css_classes=["pill", "suggested-action"])
@@ -443,6 +485,28 @@ def run(paths: HowdyPaths, user: str, dry_run: bool, replace: bool) -> int:
                 print(json.dumps(s["report"], indent=2), flush=True)
                 self.stack.add_named(self.results_page(s["report"]), "results")
                 self.stack.set_visible_child_name("results")
+                if screenshots is not None:
+                    GLib.timeout_add(900, self.screenshot, "results", True)
+            if screenshots is not None and step == 1 and sum(s.get("covered") or []) == 5:
+                GLib.timeout_add(50, self.screenshot, "rotate", False)
+            return False
+
+        def screenshot(self, name: str, quit_after: bool) -> bool:
+            """Render the window content to PNG (nothing else on screen is captured)."""
+            if name in self.shots:
+                return False
+            self.shots.add(name)
+            self.capture.request = lambda node, w, h: self.save_shot(node, w, h, name, quit_after)
+            self.capture.queue_draw()
+            return False
+
+        def save_shot(self, node, width: int, height: int, name: str, quit_after: bool) -> bool:
+            if node is not None:
+                texture = self.win.get_renderer().render_texture(node, Graphene.Rect().init(0, 0, width, height))
+                screenshots.mkdir(parents=True, exist_ok=True)
+                texture.save_to_png(str(screenshots / f"enroll-{name}.png"))
+            if quit_after:
+                self.win.close()
             return False
 
         def on_close(self, *_a) -> bool:
