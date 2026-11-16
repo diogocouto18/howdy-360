@@ -4,6 +4,13 @@ Diagnose [Howdy](https://github.com/boltgolt/howdy) face unlock, enroll your fac
 from many angles in a native GNOME window, and measure whether it actually got
 better.
 
+<p align="center">
+  <img src="docs/images/enroll-rotate.png" alt="Howdy 360 enrollment window: circular IR preview with a ring of 8 sectors filling as the head turns" width="360">
+  <img src="docs/images/enroll-results.png" alt="Howdy 360 results: median distance 3.21 with current models vs 2.15 with the new 360 models" width="360">
+  <br>
+  <sub>Screenshots from <code>howdy360 enroll --demo</code>: a drawn silhouette instead of a real camera image.</sub>
+</p>
+
 > **Unofficial.** Howdy 360 is a companion tool for Howdy. It is not affiliated
 > with Howdy or its authors, and it does not replace Howdy's PAM module or its
 > recognition engine.
@@ -152,6 +159,7 @@ shows where each came from.
 |---|---|
 | `--dry-run` | never save; keep the candidates (mode 600) for `measure --candidates` |
 | `--replace` | replace your existing models instead of adding to them (asks first, backs up) |
+| `--demo` | simulated run with a drawn silhouette: no camera, nothing read or saved (try the window without an IR camera) |
 
 ### `howdy360 measure`: did it get better?
 

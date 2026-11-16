@@ -29,6 +29,10 @@ def build_parser() -> argparse.ArgumentParser:
     enroll = sub.add_parser("enroll", help="guided multi-angle enrollment window")
     enroll.add_argument("--dry-run", action="store_true", help="never save; keep candidates for `measure`")
     enroll.add_argument("--replace", action="store_true", help="replace existing models (asks first, backs up)")
+    enroll.add_argument(
+        "--demo", action="store_true", help="simulated run with a drawn silhouette: no camera, no saving"
+    )
+    enroll.add_argument("--screenshots", type=Path, help=argparse.SUPPRESS)  # used to build the README images
 
     measure = sub.add_parser("measure", help="measure recognition and compare with last time (read-only)")
     measure.add_argument("--seconds", type=float, default=10.0, help="measurement length (default: 10)")
@@ -58,7 +62,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "enroll":
         from . import enroll_app
 
-        return enroll_app.run(paths, user, dry_run=args.dry_run, replace=args.replace)
+        return enroll_app.run(
+            paths, user, dry_run=args.dry_run, replace=args.replace, demo=args.demo, screenshots=args.screenshots
+        )
     return 2
 
 
