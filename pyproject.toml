@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "howdy-360"
+version = "0.1.0"
+description = "Diagnose Howdy face unlock, enroll your face from many angles, and measure the result."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Diogo Couto" }]
+requires-python = ">=3.10"
+# OpenCV, dlib and PyGObject are the system packages Howdy already depends on;
+# they are deliberately not pip dependencies (see README > Installation).
+dependencies = ["numpy>=1.24"]
+classifiers = [
+  "Environment :: X11 Applications :: GTK",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+]
+
+[project.urls]
+Homepage = "https://github.com/diogocouto18/howdy-360"
+Issues = "https://github.com/diogocouto18/howdy-360/issues"
+
+[project.scripts]
+howdy360 = "howdy360.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "S"]
+ignore = ["S603", "S607", "S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]
+"src/howdy360/i18n.py" = ["E501"]  # translation strings stay on one line
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["howdy360"]
+omit = [
+  "*/howdy360/vision.py",
+  "*/howdy360/enroll_app.py",
+  "*/howdy360/render.py",
+  "*/howdy360/__main__.py",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
